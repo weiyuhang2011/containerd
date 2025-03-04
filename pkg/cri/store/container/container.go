@@ -140,6 +140,26 @@ func (s *Store) Add(c Container) error {
 	return nil
 }
 
+func (s *Store) UpdateLabelsAnotations(id string, labels, annotations map[string]string) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	id, err := s.idIndex.Get(id)
+	if err != nil {
+		if err == truncindex.ErrNotExist {
+			err = errdefs.ErrNotFound
+		}
+		return err
+	}
+	if _, ok := s.containers[id]; !ok {
+		return errdefs.ErrNotFound
+	}
+	c := s.containers[id]
+	c.Config.Labels = labels
+	c.Config.Annotations = annotations
+	s.containers[id] = c
+	return nil
+}
+
 // Get returns the container with specified id. Returns errdefs.ErrNotFound
 // if the container doesn't exist.
 func (s *Store) Get(id string) (Container, error) {

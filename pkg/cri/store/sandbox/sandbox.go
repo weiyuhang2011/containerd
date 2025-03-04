@@ -17,6 +17,7 @@
 package sandbox
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/containerd/containerd"
@@ -26,6 +27,8 @@ import (
 	"github.com/containerd/containerd/pkg/cri/store/stats"
 	"github.com/containerd/containerd/pkg/netns"
 	"github.com/containerd/containerd/pkg/truncindex"
+
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 // Sandbox contains all resources associated with the sandbox. All methods to
@@ -93,6 +96,29 @@ func (s *Store) Add(sb Sandbox) error {
 		return err
 	}
 	s.sandboxes[sb.ID] = sb
+	return nil
+}
+
+func (s *Store) Update(id string, sb Sandbox) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if _, ok := s.sandboxes[id]; !ok {
+		return errdefs.ErrNotFound
+	}
+	fmt.Printf("Update wyh sandbox, id: %s, sb: %v\n", id, sb)
+	s.sandboxes[id] = sb
+	return nil
+}
+
+func (s *Store) UpdateSandboxMetaConfig(id string, config *runtime.PodSandboxConfig) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if _, ok := s.sandboxes[id]; !ok {
+		return errdefs.ErrNotFound
+	}
+	sb := s.sandboxes[id]
+	sb.Metadata.Config = config
+	s.sandboxes[id] = sb
 	return nil
 }
 

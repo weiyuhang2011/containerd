@@ -49,9 +49,13 @@ func init() {
 
 // CreateContainer creates a new container in the given PodSandbox.
 func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateContainerRequest) (_ *runtime.CreateContainerResponse, retErr error) {
+	fmt.Println("CreateContainer wyh server")
 	config := r.GetConfig()
 	log.G(ctx).Debugf("Container config %+v", config)
 	sandboxConfig := r.GetSandboxConfig()
+	if val, ok := sandboxConfig.Annotations["wyh-container"]; ok {
+		return c.containerRemap(ctx, r, val)
+	}
 	sandbox, err := c.sandboxStore.Get(r.GetPodSandboxId())
 	if err != nil {
 		return nil, fmt.Errorf("failed to find sandbox id %q: %w", r.GetPodSandboxId(), err)
@@ -112,7 +116,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 
 	// Create container root directory.
 	containerRootDir := c.getContainerRootDir(id)
-	if err = c.os.MkdirAll(containerRootDir, 0755); err != nil {
+	if err = c.os.MkdirAll(containerRootDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create container root directory %q: %w",
 			containerRootDir, err)
 	}
@@ -126,7 +130,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		}
 	}()
 	volatileContainerRootDir := c.getVolatileContainerRootDir(id)
-	if err = c.os.MkdirAll(volatileContainerRootDir, 0755); err != nil {
+	if err = c.os.MkdirAll(volatileContainerRootDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create volatile container root directory %q: %w",
 			volatileContainerRootDir, err)
 	}

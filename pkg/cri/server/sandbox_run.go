@@ -57,8 +57,29 @@ func init() {
 // RunPodSandbox creates and starts a pod-level sandbox. Runtimes should ensure
 // the sandbox is in ready state.
 func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandboxRequest) (_ *runtime.RunPodSandboxResponse, retErr error) {
+	fmt.Println("RunPodSandbox wyh server")
 	config := r.GetConfig()
 	log.G(ctx).Debugf("Sandbox config %+v", config)
+	if val, ok := config.Annotations["wyh-sandbox"]; ok {
+		// sandbox, err := c.sandboxStore.Get(val)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("fuck failed to find sandbox id %q: %w", val, err)
+		// }
+		// cstatus, err := c.sandboxService.SandboxStatus(ctx, sandbox.Sandboxer, sandbox.ID, false)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("failed to get controller status: %w", err)
+		// }
+		// if cstatus.State != sandboxstore.StateReady.String() {
+		// 	return nil, fmt.Errorf("fuck real sandbox is not ready %q: %w", val, err)
+		// }
+
+		// shadowID := val + "-shadow"
+		// if _, err := c.client.SandboxStore().Create(ctx, sandboxInfo); err != nil {
+		// 	cleanupErr = c.client.SandboxStore().Delete(ctx, id)
+		// 	return nil, fmt.Errorf("failed to save sandbox metadata: %w", err)
+		// }
+		return c.sandboxRemap(ctx, r, val)
+	}
 
 	// Generate unique id and name for the sandbox and reserve the name.
 	id := util.GenerateID()
@@ -173,7 +194,8 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 		containerd.WithSpec(spec, specOpts...),
 		containerd.WithContainerLabels(sandboxLabels),
 		containerd.WithContainerExtension(sandboxMetadataExtension, &sandbox.Metadata),
-		containerd.WithRuntime(ociRuntime.Type, runtimeOpts)}
+		containerd.WithRuntime(ociRuntime.Type, runtimeOpts),
+	}
 
 	container, err := c.client.NewContainer(ctx, id, opts...)
 	if err != nil {
@@ -206,7 +228,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 
 	// Create sandbox container root directories.
 	sandboxRootDir := c.getSandboxRootDir(id)
-	if err := c.os.MkdirAll(sandboxRootDir, 0755); err != nil {
+	if err := c.os.MkdirAll(sandboxRootDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create sandbox root directory %q: %w",
 			sandboxRootDir, err)
 	}
@@ -220,7 +242,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 		}
 	}()
 	volatileSandboxRootDir := c.getVolatileSandboxRootDir(id)
-	if err := c.os.MkdirAll(volatileSandboxRootDir, 0755); err != nil {
+	if err := c.os.MkdirAll(volatileSandboxRootDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create volatile sandbox root directory %q: %w",
 			volatileSandboxRootDir, err)
 	}
@@ -280,7 +302,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 		// handle. NetNSPath in sandbox metadata and NetNS is non empty only for non host network
 		// namespaces. If the pod is in host network namespace then both are empty and should not
 		// be used.
-		var netnsMountDir = "/var/run/netns"
+		netnsMountDir := "/var/run/netns"
 		if c.config.NetNSMountsUnderStateDir {
 			netnsMountDir = filepath.Join(c.config.StateDir, "netns")
 		}
@@ -397,7 +419,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 		// handle. NetNSPath in sandbox metadata and NetNS is non empty only for non host network
 		// namespaces. If the pod is in host network namespace then both are empty and should not
 		// be used.
-		var netnsMountDir = "/var/run/netns"
+		netnsMountDir := "/var/run/netns"
 		if c.config.NetNSMountsUnderStateDir {
 			netnsMountDir = filepath.Join(c.config.StateDir, "netns")
 		}
