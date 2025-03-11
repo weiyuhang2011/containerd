@@ -60,24 +60,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 	fmt.Println("RunPodSandbox wyh server")
 	config := r.GetConfig()
 	log.G(ctx).Debugf("Sandbox config %+v", config)
-	if val, ok := config.Annotations["wyh-sandbox"]; ok {
-		// sandbox, err := c.sandboxStore.Get(val)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("fuck failed to find sandbox id %q: %w", val, err)
-		// }
-		// cstatus, err := c.sandboxService.SandboxStatus(ctx, sandbox.Sandboxer, sandbox.ID, false)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("failed to get controller status: %w", err)
-		// }
-		// if cstatus.State != sandboxstore.StateReady.String() {
-		// 	return nil, fmt.Errorf("fuck real sandbox is not ready %q: %w", val, err)
-		// }
-
-		// shadowID := val + "-shadow"
-		// if _, err := c.client.SandboxStore().Create(ctx, sandboxInfo); err != nil {
-		// 	cleanupErr = c.client.SandboxStore().Delete(ctx, id)
-		// 	return nil, fmt.Errorf("failed to save sandbox metadata: %w", err)
-		// }
+	if val, ok := config.Annotations[SANDBOX_REMAP_ANNOTATION]; ok {
 		return c.sandboxRemap(ctx, r, val)
 	}
 

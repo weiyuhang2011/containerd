@@ -53,7 +53,8 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	config := r.GetConfig()
 	log.G(ctx).Debugf("Container config %+v", config)
 	sandboxConfig := r.GetSandboxConfig()
-	if val, ok := sandboxConfig.Annotations["wyh-container"]; ok {
+	cntrRemapKey := fmt.Sprintf("%s/%s", CONTAINER_REMAP_ANNOTATION, config.Metadata.Name)
+	if val, ok := sandboxConfig.Annotations[cntrRemapKey]; ok {
 		return c.containerRemap(ctx, r, val)
 	}
 	sandbox, err := c.sandboxStore.Get(r.GetPodSandboxId())
