@@ -55,7 +55,14 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	sandboxConfig := r.GetSandboxConfig()
 	cntrRemapKey := fmt.Sprintf("%s/%s", CONTAINER_REMAP_ANNOTATION, config.Metadata.Name)
 	if val, ok := sandboxConfig.Annotations[cntrRemapKey]; ok {
-		return c.containerRemap(ctx, r, val)
+		oldCntr, err := c.containerStore.Get(val)
+		if err != nil {
+			log.G(ctx).Debugf("Failed to find mock container %q: %v", val, err)
+		} else if oldCntr.Status.Get().State() != runtime.ContainerState_CONTAINER_RUNNING {
+			log.G(ctx).WithField("author", "wyh").Debugf("CreateContainer return old sandbox id %v but it is not running", val)
+		} else {
+			return c.containerRemap(ctx, r, val)
+		}
 	}
 	sandbox, err := c.sandboxStore.Get(r.GetPodSandboxId())
 	if err != nil {

@@ -44,6 +44,19 @@ func (c *criService) RemoveContainer(ctx context.Context, r *runtime.RemoveConta
 		log.G(ctx).Tracef("RemoveContainer called for container %q that does not exist", ctrID)
 		return &runtime.RemoveContainerResponse{}, nil
 	}
+	if _, ok := container.Config.Annotations[CONTAINER_HANDEDTO_ANNOTATION]; ok {
+		fmt.Println("RemoveContainer wyh server")
+		// orgContainer, err := c.containerStore.Get(orgContainerID)
+		// if err != nil {
+		// 	log.G(ctx).WithError(err).Error("Failed to find original container", orgContainerID)
+		// }
+		// log.G(ctx).WithField("author", "wyh").Debugf("Found original container %v for container %v", orgContainerID, container.ID)
+
+		c.containerStore.Delete(ctrID)
+		c.containerNameIndex.ReleaseByKey(ctrID)
+		c.generateAndSendContainerEvent(ctx, ctrID, container.SandboxID, runtime.ContainerEventType_CONTAINER_DELETED_EVENT)
+		return &runtime.RemoveContainerResponse{}, nil
+	}
 
 	defer c.nri.BlockPluginSync().Unblock()
 

@@ -46,6 +46,20 @@ func (c *criService) RemovePodSandbox(ctx context.Context, r *runtime.RemovePodS
 		return &runtime.RemovePodSandboxResponse{}, nil
 	}
 
+	if _, ok := sandbox.Config.Annotations[SANDBOX_HANDEDTO_ANNOTATION]; ok {
+		fmt.Println("RemovePodSandbox wyh server")
+		id := sandbox.ID
+		c.sandboxStore.Delete(id)
+
+		// Release the sandbox name reserved for the sandbox.
+		c.sandboxNameIndex.ReleaseByKey(id)
+
+		// Send CONTAINER_DELETED event with both ContainerId and SandboxId equal to SandboxId.
+		c.generateAndSendContainerEvent(ctx, id, id, runtime.ContainerEventType_CONTAINER_DELETED_EVENT)
+
+		return &runtime.RemovePodSandboxResponse{}, nil
+	}
+
 	defer c.nri.BlockPluginSync().Unblock()
 
 	// Use the full sandbox id.

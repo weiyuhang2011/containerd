@@ -61,7 +61,14 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 	config := r.GetConfig()
 	log.G(ctx).Debugf("Sandbox config %+v", config)
 	if val, ok := config.Annotations[SANDBOX_REMAP_ANNOTATION]; ok {
-		return c.sandboxRemap(ctx, r, val)
+		mockSb, err := c.sandboxStore.Get(val)
+		if err != nil {
+			log.G(ctx).Debugf("Failed to find mock sandbox %q: %v", val, err)
+		} else if mockSb.Status.Get().State != sandboxstore.StateReady {
+			log.G(ctx).Debugf("Mock sandbox %q is not ready", val)
+		} else {
+			return c.sandboxRemap(ctx, r, val)
+		}
 	}
 
 	// Generate unique id and name for the sandbox and reserve the name.
