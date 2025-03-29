@@ -4,22 +4,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/containerd/containerd/pkg/cri/store/container"
 	"github.com/containerd/containerd/pkg/cri/store/sandbox"
 	"github.com/containerd/containerd/pkg/cri/util"
 	"github.com/containerd/log"
+	"github.com/fsnotify/fsnotify"
 	"github.com/golang/protobuf/proto"
 
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 const (
-	SANDBOX_HANDFROM_ANNOTATION   = "sandboxid.openeuler.org/handed-from"
-	SANDBOX_REMAP_ANNOTATION      = "sandboxid.openeuler.org"
-	CONTAINER_REMAP_ANNOTATION    = "containerid.openeuler.org"
-	SANDBOX_HANDEDTO_ANNOTATION   = "sandboxid.openeuler.org/handed-over-to"
-	CONTAINER_HANDEDTO_ANNOTATION = "containerid.openeuler.org/handed-over-to"
+	ORIGINAL_CONTAINERS_ID_ANNOTATION = "podlivemigration.openeuler.org/originalContainersID"
+	SANDBOX_HANDFROM_ANNOTATION       = "sandboxid.openeuler.org/handed-from"
+	SANDBOX_REMAP_ANNOTATION          = "sandboxid.openeuler.org"
+	CONTAINER_REMAP_ANNOTATION        = "containerid.openeuler.org"
+	SANDBOX_HANDEDTO_ANNOTATION       = "sandboxid.openeuler.org/handed-over-to"
+	CONTAINER_HANDEDTO_ANNOTATION     = "containerid.openeuler.org/handed-over-to"
+	CHECKPOINT_ROOTDIR                = "/var/lib/checkpoint"
 )
 
 // Pod:        old-pod                                                  new-pod
@@ -163,4 +168,123 @@ func (c *criService) containerRemap(ctx context.Context, r *runtime.CreateContai
 	c.generateAndSendContainerEvent(ctx, oldContainerID, r.GetPodSandboxId(), runtime.ContainerEventType_CONTAINER_CREATED_EVENT)
 	log.G(ctx).WithField("author", "wyh").Debugf("End CreateContainer mock container id %v", oldContainerID)
 	return &runtime.CreateContainerResponse{ContainerId: oldContainerID}, nil
+}
+
+func watchFile(ctx context.Context, path string) <-chan error {
+	ch := make(chan error, 1)
+	go func() {
+		defer close(ch)
+		done, err := watchFileCreation(ctx, path)
+		select {
+		case <-done:
+		case e := <-err:
+			ch <- e
+		case <-ctx.Done():
+			ch <- ctx.Err()
+		}
+	}()
+	return ch
+}
+
+func watchFileCreation(ctx context.Context, fullpath string) (<-chan struct{}, <-chan error) {
+	done := make(chan struct{})
+	errCh := make(chan error, 1)
+	if fullpath == "" {
+		done <- struct{}{}
+		return done, errCh
+	}
+
+	go func() {
+		defer close(done)
+		defer close(errCh)
+
+		watchDir, err := findWatchableDir(fullpath)
+		if err != nil {
+			errCh <- fmt.Errorf("cannot find watchable directory for %q: %w", fullpath, err)
+			return
+		}
+
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			errCh <- fmt.Errorf("failed to create watcher: %w", err)
+			return
+		}
+		defer watcher.Close()
+
+		if err := watcher.Add(watchDir); err != nil {
+			errCh <- fmt.Errorf("failed to watch directory %q: %w", watchDir, err)
+			return
+		}
+
+		logEntry := log.G(ctx).WithField("author", "wyh")
+		logEntry.Infof("Watching directory: %s", watchDir)
+
+		for {
+			select {
+			case <-ctx.Done():
+				errCh <- fmt.Errorf("watch cancelled: %w", ctx.Err())
+				return
+			case event, ok := <-watcher.Events:
+				if !ok {
+					errCh <- fmt.Errorf("watcher event channel closed")
+					return
+				}
+				if handleFileEvent(event, fullpath, watcher, &watchDir, logEntry) {
+					done <- struct{}{}
+					return
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				errCh <- fmt.Errorf("watcher error: %w", err)
+				return
+			}
+		}
+	}()
+
+	return done, errCh
+}
+
+func findWatchableDir(fullpath string) (string, error) {
+	dirPath := filepath.Dir(fullpath)
+	for {
+		if _, err := os.Stat(dirPath); err == nil {
+			return dirPath, nil
+		}
+		parent := filepath.Dir(dirPath)
+		if parent == dirPath || parent == "." || parent == "/" {
+			return "", fmt.Errorf("no existing parent directory found for %q", fullpath)
+		}
+		dirPath = parent
+	}
+}
+
+func handleFileEvent(event fsnotify.Event, targetFile string, watcher *fsnotify.Watcher, currentWatchDir *string, logEntry *log.Entry) bool {
+	if event.Op&fsnotify.Create != fsnotify.Create {
+		return false
+	}
+
+	logEntry.Debugf("File event: %s", event.Name)
+
+	switch {
+	case event.Name == filepath.Dir(targetFile):
+		if err := watcher.Remove(*currentWatchDir); err != nil {
+			logEntry.Warnf("Failed to remove watch on %q: %v", *currentWatchDir, err)
+		}
+		if err := watcher.Add(event.Name); err != nil {
+			logEntry.Warnf("Failed to watch new directory %q: %v", event.Name, err)
+			return false
+		}
+		*currentWatchDir = event.Name
+		logEntry.Infof("Now monitoring new directory: %s", event.Name)
+		return false
+
+	case event.Name == targetFile:
+		logEntry.Infof("Target file created: %s", targetFile)
+		return true
+
+	default:
+		return false
+	}
 }
