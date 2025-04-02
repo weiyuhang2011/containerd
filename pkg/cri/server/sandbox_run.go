@@ -79,7 +79,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 			return nil, fmt.Errorf("failed to unmarshal original containers id %q: %w", val, err)
 		}
 
-		paths := make([]string, 0, len(orgIDs)*2)
+		paths := make([]string, 0, len(orgIDs))
 		if _, err := os.Stat(CHECKPOINT_ROOTDIR); errors.Is(err, os.ErrNotExist) {
 			log.G(ctx).Debugf("Checkpoint root dir %q does not exist, create it", CHECKPOINT_ROOTDIR)
 			if err := os.MkdirAll(CHECKPOINT_ROOTDIR, 0o755); err != nil {
@@ -89,14 +89,9 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 		}
 		for _, id := range orgIDs {
 			rootfsPath := fmt.Sprintf("%s/%s/status", CHECKPOINT_ROOTDIR, id)
-			imagesPath := fmt.Sprintf("%s/%s-images/status", CHECKPOINT_ROOTDIR, id)
 			if _, err := os.Stat(rootfsPath); errors.Is(err, os.ErrNotExist) {
 				log.G(ctx).Debugf("File %q does not exist, added to watch list", rootfsPath)
 				paths = append(paths, rootfsPath)
-			}
-			if _, err := os.Stat(imagesPath); errors.Is(err, os.ErrNotExist) {
-				log.G(ctx).Debugf("File %q does not exist, added to watch list", imagesPath)
-				paths = append(paths, imagesPath)
 			}
 		}
 
