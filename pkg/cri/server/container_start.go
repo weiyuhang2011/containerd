@@ -40,15 +40,14 @@ import (
 
 // StartContainer starts the container.
 func (c *criService) StartContainer(ctx context.Context, r *runtime.StartContainerRequest) (retRes *runtime.StartContainerResponse, retErr error) {
-	fmt.Println("StartContainer wyh server")
 	start := time.Now()
 	cntr, err := c.containerStore.Get(r.GetContainerId())
 	if err != nil {
 		return nil, fmt.Errorf("an error occurred when try to find container %q: %w", r.GetContainerId(), err)
 	}
 	if cntr.Status.Get().State() == runtime.ContainerState_CONTAINER_RUNNING {
-		log.G(ctx).WithField("author", "wyh").Debugf("fuck startcontainer")
-		c.generateAndSendContainerEvent(ctx, r.ContainerId, r.GetContainerId(), runtime.ContainerEventType_CONTAINER_STARTED_EVENT)
+		fmt.Println("StartContainer wyh")
+		c.generateAndSendContainerEvent(ctx, r.ContainerId, cntr.Metadata.SandboxID, runtime.ContainerEventType_CONTAINER_STARTED_EVENT)
 		return &runtime.StartContainerResponse{}, nil
 	}
 

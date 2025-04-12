@@ -58,10 +58,10 @@ func init() {
 // RunPodSandbox creates and starts a pod-level sandbox. Runtimes should ensure
 // the sandbox is in ready state.
 func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandboxRequest) (_ *runtime.RunPodSandboxResponse, retErr error) {
-	fmt.Println("RunPodSandbox wyh server")
 	config := r.GetConfig()
 	log.G(ctx).Debugf("Sandbox config %+v", config)
 	if val, ok := config.Annotations[SANDBOX_REMAP_ANNOTATION]; ok {
+		fmt.Println("RunPodSandbox wyh")
 		mockSb, err := c.sandboxStore.Get(val)
 		if err != nil {
 			log.G(ctx).Debugf("Failed to find mock sandbox %q: %v", val, err)

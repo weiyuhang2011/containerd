@@ -49,12 +49,12 @@ func init() {
 
 // CreateContainer creates a new container in the given PodSandbox.
 func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateContainerRequest) (_ *runtime.CreateContainerResponse, retErr error) {
-	fmt.Println("CreateContainer wyh server")
 	config := r.GetConfig()
 	log.G(ctx).Debugf("Container config %+v", config)
 	sandboxConfig := r.GetSandboxConfig()
 	cntrRemapKey := fmt.Sprintf("%s/%s", CONTAINER_REMAP_ANNOTATION, config.Metadata.Name)
 	if val, ok := sandboxConfig.Annotations[cntrRemapKey]; ok {
+		fmt.Println("CreateContainer wyh")
 		oldCntr, err := c.containerStore.Get(val)
 		if err != nil {
 			log.G(ctx).Debugf("Failed to find mock container %q: %v", val, err)

@@ -52,12 +52,6 @@ func (c *criService) StopPodSandbox(ctx context.Context, r *runtime.StopPodSandb
 
 	if _, ok := sandbox.Config.Annotations[SANDBOX_HANDEDTO_ANNOTATION]; ok {
 		fmt.Println("StopPodSandbox wyh server")
-		// orgSandbox, err := c.sandboxStore.Get(orgSandboxID)
-		// if err != nil {
-		// 	log.G(ctx).WithError(err).Error("Failed to find original container", orgSandboxID)
-		// }
-		// log.G(ctx).WithField("author", "wyh").Debugf("Found original container %v for container %v", orgSandboxID, sandbox.ID)
-		// update orgContainer status to stopped
 		log.G(ctx).WithField("author", "wyh").Debugf("Update sandbox %v status to not ready", sandbox.ID)
 		sandbox.Status.Update(func(status sandboxstore.Status) (sandboxstore.Status, error) {
 			status.State = sandboxstore.StateNotReady

@@ -36,7 +36,7 @@ const (
 // 4. update old-sandbox with new-pod config
 // create empty sandbox in store for mockpod, the empty sandbox is created from scheduled pod config
 func (c *criService) sandboxRemap(ctx context.Context, r *runtime.RunPodSandboxRequest, mockSbID string) (*runtime.RunPodSandboxResponse, error) {
-	fmt.Println("RemapSandbox wyh server")
+	fmt.Println("RemapSandbox wyh")
 	var err error
 	config := r.GetConfig()
 	log.G(ctx).WithField("author", "wyh").Debugf("Start RunPodSandbox old sandbox id %v", mockSbID)
@@ -90,8 +90,10 @@ func (c *criService) sandboxRemap(ctx context.Context, r *runtime.RunPodSandboxR
 // 3. get fake sandbox ID from old-sandbox annotation
 // 4. create fake container with new ID, name, fake-sandboxid and old config
 // 5. update old container with new-container label and annotation
+// REMEMBER: after container remap, the kubelet will receive a PLEG event said that the old container state is non-exist rather than running
+// so it will create a container died event, resulting in a pod terminated event
 func (c *criService) containerRemap(ctx context.Context, r *runtime.CreateContainerRequest, oldContainerID string) (_ *runtime.CreateContainerResponse, retErr error) {
-	log.G(ctx).WithField("author", "wyh").Debugf("Start CreateContainer old container id %v", oldContainerID)
+	log.G(ctx).WithField("author", "wyh").Debugf("Start RemapContainer old container id %v", oldContainerID)
 	newConfig := r.GetConfig()
 	oldCntr, err := c.containerStore.Get(oldContainerID)
 	if err != nil {
