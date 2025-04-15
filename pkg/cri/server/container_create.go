@@ -52,7 +52,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	config := r.GetConfig()
 	log.G(ctx).Debugf("Container config %+v", config)
 	sandboxConfig := r.GetSandboxConfig()
-	cntrRemapKey := fmt.Sprintf("%s/%s", CONTAINER_REMAP_ANNOTATION, config.Metadata.Name)
+	cntrRemapKey := fmt.Sprintf("%s-%s", CONTAINER_REMAP_ANNOTATION, config.Metadata.Name)
 	if val, ok := sandboxConfig.Annotations[cntrRemapKey]; ok {
 		fmt.Println("CreateContainer wyh")
 		oldCntr, err := c.containerStore.Get(val)

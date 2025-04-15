@@ -19,11 +19,11 @@ import (
 
 const (
 	ORIGINAL_CONTAINERS_ID_ANNOTATION = "podlivemigration.openeuler.org/originalContainersID"
-	SANDBOX_HANDFROM_ANNOTATION       = "sandboxid.openeuler.org/handed-from"
-	SANDBOX_REMAP_ANNOTATION          = "sandboxid.openeuler.org"
-	CONTAINER_REMAP_ANNOTATION        = "containerid.openeuler.org"
-	SANDBOX_HANDEDTO_ANNOTATION       = "sandboxid.openeuler.org/handed-over-to"
-	CONTAINER_HANDEDTO_ANNOTATION     = "containerid.openeuler.org/handed-over-to"
+	SANDBOX_REMAP_ANNOTATION          = "podlivemigration.openeuler.org/sandboxid"
+	CONTAINER_REMAP_ANNOTATION        = "podlivemigration.openeuler.org/containerid"
+	SANDBOX_HANDEDTO_ANNOTATION       = "podlivemigration.openeuler.org/sandboxid-handed-over-to"
+	SANDBOX_HANDFROM_ANNOTATION       = "podlivemigration.openeuler.org/sandboxid-handed-from"
+	CONTAINER_HANDEDTO_ANNOTATION     = "podlivemigration.openeuler.org/containerid-handed-over-to"
 	CHECKPOINT_ROOTDIR                = "/var/lib/checkpoint"
 )
 
