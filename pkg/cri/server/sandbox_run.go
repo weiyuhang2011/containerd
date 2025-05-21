@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	goruntime "runtime"
 	"strings"
@@ -69,57 +68,6 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 			log.G(ctx).Debugf("Mock sandbox %q is not ready", val)
 		} else {
 			return c.sandboxRemap(ctx, r, val)
-		}
-	}
-	if val, ok := config.Annotations[ORIGINAL_CONTAINERS_ID_ANNOTATION]; ok {
-		log.G(ctx).Debugf("Found original containers id %q", val)
-		var orgIDs []string
-		if err := json.Unmarshal([]byte(val), &orgIDs); err != nil {
-			log.G(ctx).Debugf("Failed to unmarshal original containers id %q: %v", val, err)
-			return nil, fmt.Errorf("failed to unmarshal original containers id %q: %w", val, err)
-		}
-
-		paths := make([]string, 0, len(orgIDs))
-		if _, err := os.Stat(CHECKPOINT_ROOTDIR); errors.Is(err, os.ErrNotExist) {
-			log.G(ctx).Debugf("Checkpoint root dir %q does not exist, create it", CHECKPOINT_ROOTDIR)
-			if err := os.MkdirAll(CHECKPOINT_ROOTDIR, 0o755); err != nil {
-				log.G(ctx).Debugf("Failed to create checkpoint root dir %q: %v", CHECKPOINT_ROOTDIR, err)
-				return nil, fmt.Errorf("failed to create checkpoint root dir %q: %w", CHECKPOINT_ROOTDIR, err)
-			}
-		}
-		for _, id := range orgIDs {
-			rootfsPath := fmt.Sprintf("%s/%s/status", CHECKPOINT_ROOTDIR, id)
-			if _, err := os.Stat(rootfsPath); errors.Is(err, os.ErrNotExist) {
-				log.G(ctx).Debugf("File %q does not exist, added to watch list", rootfsPath)
-				paths = append(paths, rootfsPath)
-			}
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-
-		results := make([]<-chan error, len(paths))
-		for i, p := range paths {
-			results[i] = watchFile(ctx, p)
-		}
-		remaining := len(paths)
-		for _, ch := range results {
-			select {
-			case <-ctx.Done():
-				log.G(ctx).Errorf("Timeout waiting for restored related files %q", val)
-				return nil, fmt.Errorf("timeout waiting for restored related files %q: %w", val, ctx.Err())
-			case err := <-ch:
-				if err != nil {
-					log.G(ctx).Errorf("Watch failed: %v", err)
-					return nil, fmt.Errorf("watch failed: %w", err)
-				}
-				remaining--
-			}
-		}
-
-		if remaining > 0 {
-			log.G(ctx).Errorf("%d paths not ready for restoring sandbox %q", remaining, val)
-			return nil, fmt.Errorf("%d paths not ready for restoring sandbox %q", remaining, val)
 		}
 	}
 
